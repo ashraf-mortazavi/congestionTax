@@ -3,8 +3,6 @@
 @using congestionTax.Components.Services.CityService
 @inject ICityService CityService
 
-<h3>Cities</h3>
-
 <div>
     <h4>Cities</h4>
     <table class="table">
@@ -53,6 +51,11 @@
     private bool _isEditing = false;
     private bool _isCityModalVisible = false;
     
+    
+    protected override async Task OnInitializedAsync()
+    {
+        _cities = await CityService.GetCitiesAsync();
+    }
 
     private async Task LoadCities()
     {
