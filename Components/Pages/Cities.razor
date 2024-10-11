@@ -1,0 +1,93 @@
+@page "/cities"
+@using congestionTax.Components.Models
+@using congestionTax.Components.Services.CityService
+@inject ICityService CityService
+
+<h3>Cities</h3>
+
+<div>
+    <h4>Cities</h4>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Max Daily Tax</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var city in _cities)
+            {
+                <tr>
+                    <td>@city.Name</td>
+                    <td>@city.MaxDailyTax</td>
+                    <td>
+                        <button @onclick="() => EditCity(city)">Edit</button>
+                        <button @onclick="() => DeleteCity(city.Id)">Delete</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+<button @onclick="AddNewCity">Add City</button>
+
+@if (_isCityModalVisible)
+{
+    <EditForm Model="_newCity" OnValidSubmit="SaveCity">
+        <label>Name:</label>
+        <InputText @bind-Value="_newCity.Name" />
+        
+        <label>Max Daily Tax:</label>
+        <InputNumber @bind-Value="_newCity.MaxDailyTax" />
+
+        <button type="submit">Save</button>
+        <button type="button" @onclick="CloseCityModal">Cancel</button>
+    </EditForm>
+}
+
+@code {
+    private List<City> _cities = new();
+    private City _newCity = new();
+    private bool _isEditing = false;
+    private bool _isCityModalVisible = false;
+    
+
+    private async Task LoadCities()
+    {
+        _cities = await CityService.GetCitiesAsync();
+    }
+
+    private void AddNewCity()
+    {
+        _newCity = new City();
+        _isEditing = false;
+        _isCityModalVisible = true;
+    }
+
+    private void EditCity(City city)
+    {
+        _newCity = city;
+        _isEditing = true;
+        _isCityModalVisible = true;
+    }
+
+    private async Task SaveCity()
+    {
+        await CityService.AddOrUpdateCityAsync(_newCity);
+        _isCityModalVisible = false;
+        await LoadCities();
+    }
+
+    private async Task DeleteCity(int cityId)
+    {
+        await CityService.RemoveCityAsync(cityId);
+        await LoadCities();
+    }
+
+    private void CloseCityModal()
+    {
+        _isCityModalVisible = false;
+    }
+}

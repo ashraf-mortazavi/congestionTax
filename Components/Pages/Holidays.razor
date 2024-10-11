@@ -1,0 +1,116 @@
+@page "/holidays"
+@using congestionTax.Components.Models
+@using congestionTax.Components.Services.CityService
+@using congestionTax.Components.Services.HolidayService
+@inject IHolidayService HolidayService
+@inject ICityService CityService
+
+<h3>Holidays</h3>
+
+<div>
+    <label for="cityId">Select City:</label>
+    <select bind="_selectedCityId" @onchange="LoadHolidays">
+        @foreach (var city in _cities)
+        {
+            <option value="@city.Id">@city.Name</option>
+        }
+    </select>
+</div>
+
+<div>
+    <h4>Holidays for @_selectedCityName</h4>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var holiday in _holidays)
+            {
+                <tr>
+                    <td>@holiday.HolidayDate.ToShortDateString()</td>
+                    <td>
+                        <button @onclick="() => EditHoliday(holiday)">Edit</button>
+                        <button @onclick="() => DeleteHoliday(holiday.Id)">Delete</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+<button @onclick="AddNewHoliday">Add Holiday</button>
+
+@if (_isHolidayModalVisible)
+{
+    <EditForm Model="_newHoliday" OnValidSubmit="SaveHoliday">
+        <label>Date:</label>
+        <InputDate @bind-Value="_newHoliday.HolidayDate" />
+
+        <button type="submit">Save</button>
+        <button type="button" @onclick="CloseHolidayModal">Cancel</button>
+    </EditForm>
+}
+
+@code {
+    private List<Holiday> _holidays = new();
+    private List<City> _cities = new();
+    private Holiday _newHoliday = new();
+    private int _selectedCityId;
+    private string _selectedCityName;
+    private bool _isHolidayModalVisible = false;
+    private bool _isEditing = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _cities = await CityService.GetCitiesAsync();
+    }
+
+    private async Task LoadHolidays(ChangeEventArgs e)
+    {
+        _selectedCityId = int.Parse(e.Value?.ToString() ?? throw new InvalidOperationException());
+        _selectedCityName = _cities.First(c => c.Id == _selectedCityId).Name;
+        _holidays = await HolidayService.GetHolidaysAsync(_selectedCityId);
+    }
+
+    private void AddNewHoliday()
+    {
+        _newHoliday = new Holiday();
+        _isEditing = false;
+        _isHolidayModalVisible = true;
+    }
+
+    private void EditHoliday(Holiday holiday)
+    {
+        _newHoliday = new Holiday
+        {
+            Id = holiday.Id,
+            HolidayDate = holiday.HolidayDate,
+            CityId = holiday.CityId
+           
+        };
+        _isEditing = true;
+        _isHolidayModalVisible = true;
+    }
+
+    private async Task SaveHoliday()
+    {
+        _newHoliday.CityId = _selectedCityId;
+        await HolidayService.AddOrUpdateHolidayAsync(_newHoliday);
+        _isHolidayModalVisible = false;
+        _holidays = await HolidayService.GetHolidaysAsync(_selectedCityId);
+    }
+
+    private async Task DeleteHoliday(int holidayId)
+    {
+        await HolidayService.RemoveHolidayAsync(holidayId);
+        _holidays = await HolidayService.GetHolidaysAsync(_selectedCityId);
+    }
+
+    private void CloseHolidayModal()
+    {
+        _isHolidayModalVisible = false;
+    }
+}

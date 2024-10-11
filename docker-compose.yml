@@ -1,0 +1,16 @@
+﻿services:
+  congestiontax:
+    image: congestiontax
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+
+  sqlserver:
+    container_name: sqlserver
+    image: mcr.microsoft.com/mssql/server
+    ports:
+      - "1433:1433"
+    environment:
+      MSSQL_SA_PASSWORD: "@A1234567890m!"
+      ACCEPT_EULA: "Y"

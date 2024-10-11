@@ -1,0 +1,70 @@
+@page "/calculate-tax"
+@using congestionTax.Components.Models
+@using congestionTax.Components.Services
+@using congestionTax.Components.Services.CityService
+@inject ICongestionTaxCalculatorService TaxCalculatorService
+@inject ICityService CityService
+
+<h3>Calculate Congestion Tax</h3>
+
+<div>
+    <EditForm Model="_taxModel" OnValidSubmit="CalculateTaxAsync">
+        <div>
+            <label>Vehicles Type:</label>
+            <InputText @bind-Value="_taxModel.VehicleType" />
+        </div>
+
+        <div>
+            <label>City:</label>
+            <select bind-Value="@_taxModel.SelectedCityId">
+                <option value="">Select a city</option>
+                @foreach (var city in _cities)
+                {
+                    <option value="@city.Id">@city.Name</option>
+                }
+            </select>
+        </div>
+
+        <div>
+            <label>Pass Times (comma-separated, in format yyyy-MM-dd HH:mm):</label>
+            <InputText @bind-Value="_taxModel.PassTimes" />
+        </div>
+
+        <button type="submit">Calculate Tax</button>
+    </EditForm>
+</div>
+
+@if (_taxResult.HasValue)
+{
+    <h4>Tax Result: SEK @_taxResult.Value</h4>
+}
+
+@code {
+    private TaxCalculationModel _taxModel = new TaxCalculationModel();
+    private List<City> _cities = new List<City>();
+    private int? _taxResult = null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _cities = await CityService.GetCitiesAsync();
+    }
+
+    private async Task CalculateTaxAsync()
+    {
+        var passTimesList = _taxModel.PassTimes.Split(',')
+            .Select(pt => DateTime.Parse(pt.Trim()))
+            .ToList();
+
+        _taxResult = await TaxCalculatorService.CalculateTaxAsync(
+            _taxModel.SelectedCityId, 
+            passTimesList,
+            _taxModel.VehicleType);
+    }
+
+    private class TaxCalculationModel
+    {
+        public int SelectedCityId { get; set; }
+        public string PassTimes { get; set; }
+        public string VehicleType { get; set; }
+    }
+}

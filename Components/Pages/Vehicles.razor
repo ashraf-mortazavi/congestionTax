@@ -1,0 +1,129 @@
+@page "/vehicles"
+@using System.Runtime.InteropServices.JavaScript
+@using congestionTax.Components.Models
+@using congestionTax.Components.Models.Enums
+@using congestionTax.Components.Services.CityService
+@using congestionTax.Components.Services.VehiclesService
+@inject IVehiclesService VehicleService
+@inject ICityService CityService
+
+<h3>Vehicles</h3>
+
+<div>
+    <label for="cityId">Select City:</label>
+    <select bind="@_selectedCityId" @onchange="LoadVehicles">
+        @foreach (var city in _cities)
+        {
+            <option value="@city.Id">@city.Name</option>
+        }
+    </select>
+</div>
+
+<div>
+    <h4>Vehicless for @_selectedCityName</h4>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Type</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var vehicle in _vehicles)
+            {
+                <tr>
+                    <td>@vehicle.VehicleType</td>
+                    <td>
+                        <button @onclick="() => EditVehicle(vehicle)">Edit</button>
+                        <button @onclick="() => DeleteVehicle(vehicle.Id)">Delete</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+<button @onclick="AddNewVehicle">Add Vehicles</button>
+
+@if (_isVehicleModalVisible)
+{
+    <EditForm Model="_newVehicle" OnValidSubmit="SaveVehicle">
+        <label>Type:</label>
+        <InputText bind-Value="@VehicleTypeToString" />
+
+        <button type="submit">Save</button>
+        <button type="button" @onclick="CloseVehicleModal">Cancel</button>
+    </EditForm>
+}
+
+@code {
+    private List<Vehicle> _vehicles = new();
+    private List<City> _cities = new();
+    private Vehicle _newVehicle = new();
+    private int _selectedCityId;
+    private string _selectedCityName;
+    private bool _isVehicleModalVisible = false;
+    private bool _isEditing = false;
+
+    private string VehicleTypeToString
+    {
+        get => _newVehicle.VehicleType.ToString();
+        set
+        {
+            if (Enum.TryParse<VehicleType>(value, out var parsedType))
+            {
+                _newVehicle.VehicleType = parsedType;
+            }
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _cities = await CityService.GetCitiesAsync();
+    }
+
+    private async Task LoadVehicles(ChangeEventArgs e)
+    {
+        _selectedCityId = int.Parse(e.Value?.ToString() ?? throw new InvalidOperationException());
+        _selectedCityName = _cities.First(c => c.Id == _selectedCityId).Name;
+        _vehicles = await VehicleService.GetVehiclesAsync(_selectedCityId);
+    }
+
+    private void AddNewVehicle()
+    {
+        _newVehicle = new Vehicle();
+        _isEditing = false;
+        _isVehicleModalVisible = true;
+    }
+
+    private void EditVehicle(Vehicle vehicle)
+    {
+        _newVehicle = new Vehicle
+        {
+            Id = vehicle.Id,
+            VehicleType = vehicle.VehicleType,
+            CityId = vehicle.CityId
+        };
+        _isEditing = true;
+        _isVehicleModalVisible = true;
+    }
+
+    private async Task SaveVehicle()
+    {
+        _newVehicle.Id = _selectedCityId;
+        await VehicleService.AddOrUpdateVehicleAsync(_newVehicle);
+        _isVehicleModalVisible = false;
+        _vehicles = await VehicleService.GetVehiclesAsync(_selectedCityId);
+    }
+
+    private async Task DeleteVehicle(int vehicleId)
+    {
+        await VehicleService.RemoveVehicleAsync(vehicleId);
+        _vehicles = await VehicleService.GetVehiclesAsync(_selectedCityId);
+    }
+
+    private void CloseVehicleModal()
+    {
+        _isVehicleModalVisible = false;
+    }
+}
